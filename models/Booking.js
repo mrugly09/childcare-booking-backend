@@ -8,7 +8,8 @@ const BookingSchema = new mongoose.Schema({
   },
   caregiver: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'Caregiver',
+    required: true
   },
   childName: {
     type: String,

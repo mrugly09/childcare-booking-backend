@@ -1,9 +1,15 @@
 const Caregiver = require("../models/Caregiver");
 
 // Create caregiver profile
-const createCaregiver = async (req, res) => {
+const createCaregiver = async (req, res, next) => {
     try {
-        const { bio, location, hourlyRate, services } = req.body;
+        const {
+            bio,
+            experience,
+            location,
+            hourlyRate,
+            services
+        } = req.body;
 
         if (!location || hourlyRate === undefined) {
             return res.status(400).json({
@@ -14,7 +20,7 @@ const createCaregiver = async (req, res) => {
 
         // Check if the user already has a caregiver profile
         const existingCaregiver = await Caregiver.findOne({
-            user: req.user._id
+            user: req.user.id
         });
 
         if (existingCaregiver) {
@@ -25,8 +31,9 @@ const createCaregiver = async (req, res) => {
         }
 
         const caregiver = await Caregiver.create({
-            user: req.user._id,
+            user: req.user.id,
             bio,
+            experience,
             location,
             hourlyRate,
             services: services || []
@@ -39,40 +46,31 @@ const createCaregiver = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Unable to create caregiver profile"
-        });
+        next(error);
     }
 };
 
 
 // Get all caregivers
-const getCaregivers = async (req, res) => {
+const getCaregivers = async (req, res, next) => {
     try {
         const caregivers = await Caregiver.find()
             .populate("user", "name email role");
 
         return res.status(200).json({
             success: true,
+            count: caregivers.length,
             data: caregivers
         });
 
     } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Unable to fetch caregivers"
-        });
+        next(error);
     }
 };
 
 
 // Get one caregiver
-const getCaregiverById = async (req, res) => {
+const getCaregiverById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
@@ -92,25 +90,29 @@ const getCaregiverById = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Unable to fetch caregiver"
-        });
+        next(error);
     }
 };
 
 
 // Update caregiver profile
-const updateCaregiver = async (req, res) => {
+const updateCaregiver = async (req, res, next) => {
     try {
-        const { bio, location, hourlyRate, services } = req.body;
+        const {
+            bio,
+            experience,
+            location,
+            hourlyRate,
+            services
+        } = req.body;
 
         const caregiver = await Caregiver.findOneAndUpdate(
-            { user: req.user._id },
+            {
+                user: req.user.id
+            },
             {
                 bio,
+                experience,
                 location,
                 hourlyRate,
                 services
@@ -135,21 +137,16 @@ const updateCaregiver = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Unable to update caregiver profile"
-        });
+        next(error);
     }
 };
 
 
 // Delete caregiver profile
-const deleteCaregiver = async (req, res) => {
+const deleteCaregiver = async (req, res, next) => {
     try {
         const caregiver = await Caregiver.findOneAndDelete({
-            user: req.user._id
+            user: req.user.id
         });
 
         if (!caregiver) {
@@ -165,12 +162,7 @@ const deleteCaregiver = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Unable to delete caregiver profile"
-        });
+        next(error);
     }
 };
 

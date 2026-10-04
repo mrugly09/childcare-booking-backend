@@ -1,108 +1,163 @@
-const Booking = require('../models/Booking');
+const Booking = require("../models/Booking");
+const Caregiver = require("../models/Caregiver");
 
-// Create a new booking
+// Create booking
 const createBooking = async (req, res, next) => {
-  try {
-    const { caregiverId, childName, date, notes } = req.body;
+    try {
+        const {
+            caregiverId,
+            childName,
+            date,
+            notes
+        } = req.body;
 
-    // Validation
-    if (!childName || !date) {
-      return res.status(400).json({
-        success: false,
-        message: 'Child name and booking date are required fields.'
-      });
+        if (!caregiverId || !childName || !date) {
+            return res.status(400).json({
+                success: false,
+                message: "Caregiver, child name and booking date are required fields."
+            });
+        }
+
+        // Make sure the selected caregiver exists
+        const caregiver = await Caregiver.findById(caregiverId);
+
+        if (!caregiver) {
+            return res.status(404).json({
+                success: false,
+                message: "Caregiver not found"
+            });
+        }
+
+        const booking = await Booking.create({
+            parent: req.user.id,
+            caregiver: caregiver._id,
+            childName,
+            date,
+            notes
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Booking created successfully",
+            data: booking
+        });
+
+    } catch (error) {
+        next(error);
     }
-
-    const newBooking = await Booking.create({
-      parent: req.user.id,
-      caregiver: caregiverId,
-      childName,
-      date,
-      notes
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Booking created successfully',
-      data: newBooking
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
 
-// Get bookings for the logged-in user
+// Get bookings
 const getBookings = async (req, res, next) => {
-  try {
-    let filter = {};
+    try {
+        let filter = {};
 
-    // Parents only see their own bookings
-    if (req.user.role === 'PARENT') {
-      filter.parent = req.user.id;
+        // Parent sees only their own bookings
+        if (req.user.role === "PARENT") {
+            filter.parent = req.user.id;
+        }
+
+        // Caregiver sees only bookings assigned to them
+        else if (req.user.role === "CAREGIVER") {
+            const caregiver = await Caregiver.findOne({
+                user: req.user.id
+            });
+
+            if (!caregiver) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Caregiver profile not found"
+                });
+            }
+
+            filter.caregiver = caregiver._id;
+        }
+
+        const bookings = await Booking.find(filter)
+            .populate("parent", "name email role")
+            .populate({
+                path: "caregiver",
+                populate: {
+                    path: "user",
+                    select: "name email role"
+                }
+            })
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            count: bookings.length,
+            data: bookings
+        });
+
+    } catch (error) {
+        next(error);
     }
-
-    // Caregivers see assigned bookings and pending bookings
-    else if (req.user.role === 'CAREGIVER') {
-      filter = {
-        $or: [
-          { caregiver: req.user.id },
-          { status: 'PENDING' }
-        ]
-      };
-    }
-
-    const bookings = await Booking.find(filter)
-      .populate('parent', 'name email role')
-      .populate('caregiver', 'name email role')
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: bookings.length,
-      data: bookings
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
 
 // Update booking status
 const updateBookingStatus = async (req, res, next) => {
-  try {
-    const { status } = req.body;
-    const { id } = req.params;
+    try {
+        const { status } = req.body;
+        const { id } = req.params;
 
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      id,
-      { status },
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: "Booking status is required"
+            });
+        }
 
-    if (!updatedBooking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found'
-      });
+        const caregiver = await Caregiver.findOne({
+            user: req.user.id
+        });
+
+        if (!caregiver) {
+            return res.status(404).json({
+                success: false,
+                message: "Caregiver profile not found"
+            });
+        }
+
+        const updatedBooking = await Booking.findOneAndUpdate(
+            {
+                _id: id,
+                caregiver: caregiver._id
+            },
+            {
+                status
+            },
+          
+                {
+    returnDocument: "after",
+    runValidators: true
+}
+
+        );
+
+        if (!updatedBooking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found or you are not authorized to update it"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Booking status updated successfully",
+            data: updatedBooking
+        });
+
+    } catch (error) {
+        next(error);
     }
-
-    res.status(200).json({
-      success: true,
-      message: 'Booking status updated successfully',
-      data: updatedBooking
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
 
 module.exports = {
-  createBooking,
-  getBookings,
-  updateBookingStatus
+    createBooking,
+    getBookings,
+    updateBookingStatus
 };

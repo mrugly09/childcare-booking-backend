@@ -1,5 +1,8 @@
 const express = require("express");
 
+const verifyToken = require("../middleware/auth");
+const checkRole = require("../middleware/role");
+
 const {
     createCaregiver,
     getCaregivers,
@@ -8,18 +11,44 @@ const {
     deleteCaregiver
 } = require("../controllers/caregiverController");
 
-const verifyToken = require("../middleware/auth");
-
 const router = express.Router();
 
-router.post("/createcaregiver", verifyToken, createCaregiver);
+// Create caregiver profile - CAREGIVER only
+router.post(
+  "/create",
+  verifyToken,
+  checkRole("CAREGIVER"),
+  createCaregiver
+);
 
-router.get("/getcaregivers", getCaregivers);
+// Get all caregivers - logged-in users
+router.get(
+  "/all",
+  verifyToken,
+  getCaregivers
+);
 
-router.get("/getcaregiver/:id", getCaregiverById);
+// Get one caregiver - logged-in users
+router.get(
+  "/:id",
+  verifyToken,
+  getCaregiverById
+);
 
-router.put("/updatecaregiver", verifyToken, updateCaregiver);
+// Update own caregiver profile - CAREGIVER only
+router.put(
+  "/update/:id",
+  verifyToken,
+  checkRole("CAREGIVER"),
+  updateCaregiver
+);
 
-router.delete("/deletecaregiver", verifyToken, deleteCaregiver);
+// Delete own caregiver profile - CAREGIVER only
+router.delete(
+  "/delete/:id",
+  verifyToken,
+  checkRole("CAREGIVER"),
+  deleteCaregiver
+);
 
 module.exports = router;

@@ -9,20 +9,36 @@ const {
 } = require("../controllers/availabilityController");
 
 const verifyToken = require("../middleware/auth");
+const checkRole = require("../middleware/role");
 
 const router = express.Router();
 
-router.post("/", verifyToken, createAvailability);
+router.post(
+    "/create",
+    verifyToken,
+    checkRole("CAREGIVER"),
+    createAvailability
+);
 
-router.get("/", getAvailability);
+router.get("/all", getAvailability);
 
 router.get(
     "/caregiver/:caregiverId",
     getCaregiverAvailability
 );
 
-router.put("/:id", verifyToken, updateAvailability);
+router.put(
+    "/update/:id",
+    verifyToken,
+    checkRole("CAREGIVER"),
+    updateAvailability
+);
 
-router.delete("/:id", verifyToken, deleteAvailability);
+router.delete(
+    "/delete/:id",
+    verifyToken,
+    checkRole("CAREGIVER"),
+    deleteAvailability
+);
 
 module.exports = router;
